@@ -11,14 +11,16 @@ import six.moves.urllib.request
 from django.db import models
 
 from oauth_provider.compat import AUTH_USER_MODEL, get_random_string
-from oauth_provider.consts import (CONSUMER_KEY_SIZE,
-                                   CONSUMER_STATES,
-                                   KEY_SIZE,
-                                   MAX_URL_LENGTH,
-                                   OUT_OF_BAND,
-                                   PENDING,
-                                   SECRET_SIZE,
-                                   VERIFIER_SIZE)
+from oauth_provider.consts import (
+    CONSUMER_KEY_SIZE,
+    CONSUMER_STATES,
+    KEY_SIZE,
+    MAX_URL_LENGTH,
+    OUT_OF_BAND,
+    PENDING,
+    SECRET_SIZE,
+    VERIFIER_SIZE,
+)
 from oauth_provider.managers import TokenManager
 from oauth_provider.utils import check_valid_callback
 
@@ -30,7 +32,7 @@ class Nonce(models.Model):
     timestamp = models.PositiveIntegerField(db_index=True)
 
     def __unicode__(self):
-        return u"Nonce %s for %s" % (self.key, self.consumer_key)
+        return "Nonce %s for %s" % (self.key, self.consumer_key)
 
 
 class Scope(models.Model):
@@ -39,14 +41,15 @@ class Scope(models.Model):
     is_readonly = models.BooleanField(default=True)
 
     def __unicode__(self):
-        return u"Resource %s with url %s" % (self.name, self.url)
+        return "Resource %s with url %s" % (self.name, self.url)
 
 
 class Resource(Scope):
-
     def __init__(self, *args, **kwargs):
-        warnings.warn("oauth_provider.Resource model is deprecated, use oauth_provider.Scope instead",
-                      DeprecationWarning)
+        warnings.warn(
+            "oauth_provider.Resource model is deprecated, use oauth_provider.Scope instead",
+            DeprecationWarning,
+        )
         super(Resource, self).__init__(*args, **kwargs)
 
     class Meta:
@@ -61,11 +64,13 @@ class Consumer(models.Model):
     secret = models.CharField(max_length=SECRET_SIZE, blank=True)
 
     status = models.SmallIntegerField(choices=CONSUMER_STATES, default=PENDING)
-    user = models.ForeignKey(AUTH_USER_MODEL, null=True, blank=True)
-    xauth_allowed = models.BooleanField(u"Allow xAuth", default=False)
+    user = models.ForeignKey(
+        AUTH_USER_MODEL, null=True, blank=True, on_delete=models.CASCADE
+    )
+    xauth_allowed = models.BooleanField("Allow xAuth", default=False)
 
     def __unicode__(self):
-        return u"Consumer %s with key %s" % (self.name, self.key)
+        return "Consumer %s with key %s" % (self.name, self.key)
 
     def generate_random_codes(self):
         """
@@ -84,7 +89,7 @@ def default_token_timestamp():
 class Token(models.Model):
     REQUEST = 1
     ACCESS = 2
-    TOKEN_TYPES = ((REQUEST, u'Request'), (ACCESS, u'Access'))
+    TOKEN_TYPES = ((REQUEST, "Request"), (ACCESS, "Access"))
 
     key = models.CharField(max_length=KEY_SIZE, null=True, blank=True)
     secret = models.CharField(max_length=SECRET_SIZE, null=True, blank=True)
@@ -92,9 +97,15 @@ class Token(models.Model):
     timestamp = models.IntegerField(default=default_token_timestamp)
     is_approved = models.BooleanField(default=False)
 
-    user = models.ForeignKey(AUTH_USER_MODEL, null=True, blank=True, related_name='tokens')
-    consumer = models.ForeignKey(Consumer)
-    scope = models.ForeignKey(Scope, null=True, blank=True)
+    user = models.ForeignKey(
+        AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        related_name="tokens",
+        on_delete=models.CASCADE,
+    )
+    consumer = models.ForeignKey(Consumer, on_delete=models.CASCADE)
+    scope = models.ForeignKey(Scope, null=True, blank=True, on_delete=models.CASCADE)
 
     @property
     def resource(self):
@@ -112,27 +123,31 @@ class Token(models.Model):
     objects = TokenManager()
 
     def __unicode__(self):
-        return u"%s Token %s for %s" % (self.get_token_type_display(), self.key, self.consumer)
+        return "%s Token %s for %s" % (
+            self.get_token_type_display(),
+            self.key,
+            self.consumer,
+        )
 
     def to_string(self, only_key=False):
         token_dict = {
-            'oauth_token': self.key,
-            'oauth_token_secret': self.secret,
-            'oauth_callback_confirmed': self.callback_confirmed and 'true' or 'error'
+            "oauth_token": self.key,
+            "oauth_token_secret": self.secret,
+            "oauth_callback_confirmed": self.callback_confirmed and "true" or "error",
         }
         if self.verifier:
-            token_dict['oauth_verifier'] = self.verifier
+            token_dict["oauth_verifier"] = self.verifier
 
         if only_key:
-            del token_dict['oauth_token_secret']
-            del token_dict['oauth_callback_confirmed']
+            del token_dict["oauth_token_secret"]
+            del token_dict["oauth_callback_confirmed"]
 
         return six.moves.urllib.parse.urlencode(token_dict)
 
     def generate_random_codes(self):
         """
-        Used to generate random key/secret pairings. 
-        Use this after you've added the other data in place of save(). 
+        Used to generate random key/secret pairings.
+        Use this after you've added the other data in place of save().
         """
         self.key = uuid.uuid4().hex
         self.secret = get_random_string(length=SECRET_SIZE)
@@ -146,9 +161,9 @@ class Token(models.Model):
             parts = six.moves.urllib.parse.urlparse(self.callback)
             scheme, netloc, path, params, query, fragment = parts[:6]
             if query:
-                query = '%s&oauth_verifier=%s' % (query, self.verifier)
+                query = "%s&oauth_verifier=%s" % (query, self.verifier)
             else:
-                query = 'oauth_verifier=%s' % self.verifier
+                query = "oauth_verifier=%s" % self.verifier
 
             # workaround for non-http scheme urlparse problem in py2.6 (issue #2)
             if "?" in path:
@@ -157,8 +172,9 @@ class Token(models.Model):
 
             if args is not None:
                 query += "&%s" % six.moves.urllib.parse.urlencode(args)
-            return six.moves.urllib.parse.urlunparse((scheme, netloc, path, params,
-                                                      query, fragment))
+            return six.moves.urllib.parse.urlunparse(
+                (scheme, netloc, path, params, query, fragment)
+            )
         args = args is not None and "?%s" % six.moves.urllib.parse.urlencode(args) or ""
         return self.callback and self.callback + args
 
@@ -169,4 +185,4 @@ class Token(models.Model):
                 self.callback_confirmed = True
                 self.save()
             else:
-                raise oauth.Error('Invalid callback URL.')
+                raise oauth.Error("Invalid callback URL.")
