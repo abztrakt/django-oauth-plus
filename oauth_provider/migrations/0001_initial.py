@@ -8,10 +8,6 @@ import oauth_provider.models
 
 
 class Migration(migrations.Migration):
-    dependencies = [
-        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-    ]
-
     operations = [
         migrations.CreateModel(
             name="Consumer",
@@ -44,15 +40,6 @@ class Migration(migrations.Migration):
                 (
                     "xauth_allowed",
                     models.BooleanField(default=False, verbose_name="Allow xAuth"),
-                ),
-                (
-                    "user",
-                    models.ForeignKey(
-                        blank=True,
-                        to=settings.AUTH_USER_MODEL,
-                        null=True,
-                        on_delete=models.CASCADE,
-                    ),
                 ),
             ],
             options={},
@@ -136,16 +123,6 @@ class Migration(migrations.Migration):
                     models.ForeignKey(
                         blank=True,
                         to="oauth_provider.Scope",
-                        null=True,
-                        on_delete=models.CASCADE,
-                    ),
-                ),
-                (
-                    "user",
-                    models.ForeignKey(
-                        related_name=b"tokens",
-                        blank=True,
-                        to=settings.AUTH_USER_MODEL,
                         null=True,
                         on_delete=models.CASCADE,
                     ),
